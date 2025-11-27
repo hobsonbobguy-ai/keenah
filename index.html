@@ -105,7 +105,7 @@
             inset: 0;
             pointer-events: none;
             z-index: 10000;
-            opacity: 0.025;
+            opacity: 0.02;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
@@ -114,8 +114,23 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            z-index: 9999;
-            background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0,0,0,0.5) 100%);
+            z-index: 9998;
+            background: radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(0,0,0,0.7) 100%);
+        }
+
+        /* Warp Tunnel Effect */
+        .warp-lines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9997;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            background: radial-gradient(ellipse at center, transparent 30%, rgba(155, 77, 202, 0.1) 100%);
+        }
+
+        .warp-lines.active {
+            opacity: 1;
         }
 
         /* ========================================
@@ -129,7 +144,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: radial-gradient(ellipse at center, var(--nebula-core) 0%, var(--void) 70%);
+            background: transparent;
             transition: opacity 2s var(--easing-expo), 
                         transform 2s var(--easing-expo),
                         filter 2s var(--easing-expo);
@@ -367,6 +382,7 @@
             inset: 0;
             z-index: -1;
             pointer-events: none;
+            background: radial-gradient(ellipse at center bottom, #1a0b2e 0%, #0a0a12 40%, #030305 100%);
         }
 
         .canvas-container canvas {
@@ -374,11 +390,10 @@
             inset: 0;
         }
 
-        #starsCanvas { z-index: 1; }
+        #warpCanvas { z-index: 1; }
         #nebulaCanvas { z-index: 2; }
-        #constellationCanvas { z-index: 3; }
-        #particleCanvas { z-index: 4; }
-        #interactionCanvas { z-index: 5; }
+        #dustCanvas { z-index: 3; }
+        #interactionCanvas { z-index: 4; }
 
         /* ========================================
            MAIN CONTENT
@@ -514,21 +529,6 @@
             text-transform: uppercase;
             color: var(--gold-rich);
             margin-top: 1rem;
-        }
-
-        /* Decorative Star Icon */
-        .star-icon {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin: 0 0.5rem;
-            vertical-align: middle;
-        }
-
-        .star-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: currentColor;
         }
 
         /* ========================================
@@ -982,6 +982,26 @@
             fill: none;
         }
 
+        /* Speed Indicator */
+        .speed-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 100;
+        }
+
+        .speed-indicator.visible {
+            opacity: 0.5;
+        }
+
         /* ========================================
            RESPONSIVE
            ======================================== */
@@ -1056,6 +1076,7 @@
     <!-- Noise & Vignette -->
     <div class="noise"></div>
     <div class="vignette"></div>
+    <div class="warp-lines" id="warpLines"></div>
 
     <!-- Custom Cursor -->
     <div class="cursor cursor-dot" id="cursorDot"></div>
@@ -1063,15 +1084,19 @@
 
     <!-- Canvas Systems -->
     <div class="canvas-container">
-        <canvas id="starsCanvas"></canvas>
+        <canvas id="warpCanvas"></canvas>
         <canvas id="nebulaCanvas"></canvas>
-        <canvas id="constellationCanvas"></canvas>
-        <canvas id="particleCanvas"></canvas>
+        <canvas id="dustCanvas"></canvas>
         <canvas id="interactionCanvas"></canvas>
     </div>
 
     <!-- Floating Elements Container -->
     <div class="floating-elements" id="floatingElements"></div>
+
+    <!-- Speed Indicator -->
+    <div class="speed-indicator" id="speedIndicator">
+        Warp Speed Active
+    </div>
 
     <!-- Entry Gateway -->
     <section class="entry-gateway" id="entryGateway">
@@ -1222,8 +1247,8 @@
 
         <!-- Signature -->
         <footer class="signature-section">
-            <p class="final-wish">As the cosmos ages</p>
-            <p class="signature-name">Yours truly - Aecha</p>
+            <p class="final-wish">Infinite Love, Always</p>
+            <p class="signature-name">Forever Yours</p>
 
             <div class="ending-flourish">
                 <span class="flourish-line"></span>
@@ -1237,15 +1262,17 @@
     <script>
         /**
          * ═══════════════════════════════════════════════════════════════════
-         * COSMIC BIRTHDAY EXPERIENCE — PhD-Level Implementation
+         * COSMIC BIRTHDAY EXPERIENCE — IMMERSIVE WARP FIELD
          * ═══════════════════════════════════════════════════════════════════
          * 
-         * Architecture:
-         * - Functional reactive programming patterns
-         * - Object pooling for particles
-         * - Optimized rendering pipeline
-         * - Smooth 60fps animations
-         * - GPU-accelerated transformations
+         * Features:
+         * - 3D Warp-speed star field with perspective projection
+         * - Multi-layer depth system (close, mid, far stars)
+         * - Cosmic nebula clouds drifting past
+         * - Shooting stars streaking across
+         * - Dynamic speed control
+         * - Ambient dust particles
+         * - Interactive particle trails
          */
 
         'use strict';
@@ -1255,31 +1282,39 @@
         // ═══════════════════════════════════════════════════════════════════
 
         const CONFIG = Object.freeze({
-            STARS: {
-                COUNT: 500,
-                MIN_SIZE: 0.5,
-                MAX_SIZE: 2.5,
-                PARALLAX_STRENGTH: 0.03,
-                TWINKLE_SPEED: 0.002
+            WARP: {
+                STAR_COUNT: 1200,
+                BASE_SPEED: 0.8,
+                WARP_SPEED: 35,
+                WARP_DURATION: 3000,
+                DECELERATION: 0.97,
+                PERSPECTIVE: 800,
+                SPAWN_DISTANCE: 2500,
+                COLORS: ['#FFFFFF', '#E8D5A3', '#00E5FF', '#C9A227', '#B8C4FF', '#FFE4C4', '#9B4DCA']
             },
             NEBULA: {
-                OPACITY: 0.15,
-                PULSE_SPEED: 0.0005
+                CLOUD_COUNT: 8,
+                MIN_SIZE: 100,
+                MAX_SIZE: 400,
+                DRIFT_SPEED: 0.3,
+                OPACITY: 0.08
             },
-            CONSTELLATIONS: {
-                NODE_COUNT: 25,
-                MAX_DISTANCE: 200,
-                LINE_OPACITY: 0.15
+            DUST: {
+                COUNT: 200,
+                MIN_SIZE: 1,
+                MAX_SIZE: 3,
+                PARALLAX: 0.02
             },
-            PARTICLES: {
-                MAX_COUNT: 300,
-                SPAWN_RATE: 0.3,
-                GRAVITY: 50,
-                TRAIL_LENGTH: 15
+            SHOOTING_STARS: {
+                INTERVAL_MIN: 2000,
+                INTERVAL_MAX: 5000,
+                SPEED: 15,
+                LENGTH: 150
             },
-            FLOATING: {
-                SPAWN_INTERVAL: 4000,
-                SHAPES: ['diamond', 'star', 'circle']
+            INTERACTION: {
+                MAX_PARTICLES: 300,
+                SPAWN_RATE: 0.4,
+                GRAVITY: 50
             },
             COLORS: {
                 GOLD: '#C9A227',
@@ -1292,17 +1327,20 @@
         });
 
         // ═══════════════════════════════════════════════════════════════════
-        // STATE MANAGEMENT
+        // STATE
         // ═══════════════════════════════════════════════════════════════════
 
         const State = {
-            mouse: { x: window.innerWidth / 2, y: window.innerHeight / 2, vx: 0, vy: 0 },
+            mouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
             smoothMouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-            time: 0,
-            isActive: false,
-            isAudioPlaying: false,
             dimensions: { width: window.innerWidth, height: window.innerHeight },
-            dpr: Math.min(window.devicePixelRatio || 1, 2)
+            dpr: Math.min(window.devicePixelRatio || 1, 2),
+            warpSpeed: CONFIG.WARP.BASE_SPEED,
+            targetSpeed: CONFIG.WARP.BASE_SPEED,
+            isWarping: false,
+            isActive: false,
+            scrollY: 0,
+            time: 0
         };
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1310,31 +1348,20 @@
         // ═══════════════════════════════════════════════════════════════════
 
         const Utils = {
-            lerp: (start, end, factor) => start + (end - start) * factor,
-            
-            clamp: (value, min, max) => Math.min(Math.max(value, min), max),
-            
-            randomRange: (min, max) => Math.random() * (max - min) + min,
-            
-            distance: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
-            
+            lerp: (a, b, t) => a + (b - a) * t,
+            clamp: (v, min, max) => Math.min(Math.max(v, min), max),
+            random: (min, max) => Math.random() * (max - min) + min,
+            randomInt: (min, max) => Math.floor(Utils.random(min, max)),
             throttle: (fn, delay) => {
-                let lastCall = 0;
+                let last = 0;
                 return (...args) => {
                     const now = performance.now();
-                    if (now - lastCall >= delay) {
-                        lastCall = now;
-                        return fn(...args);
-                    }
+                    if (now - last >= delay) { last = now; return fn(...args); }
                 };
             },
-            
             debounce: (fn, delay) => {
-                let timeoutId;
-                return (...args) => {
-                    clearTimeout(timeoutId);
-                    timeoutId = setTimeout(() => fn(...args), delay);
-                };
+                let id;
+                return (...args) => { clearTimeout(id); id = setTimeout(() => fn(...args), delay); };
             }
         };
 
@@ -1343,31 +1370,28 @@
         // ═══════════════════════════════════════════════════════════════════
 
         class CanvasManager {
-            constructor(id, options = {}) {
+            constructor(id) {
                 this.canvas = document.getElementById(id);
-                this.ctx = this.canvas.getContext('2d', {
-                    alpha: options.alpha !== false,
-                    desynchronized: true
-                });
+                this.ctx = this.canvas.getContext('2d', { alpha: true, desynchronized: true });
                 this.resize();
             }
 
             resize() {
                 const { width, height } = State.dimensions;
                 const dpr = State.dpr;
-                
                 this.canvas.width = width * dpr;
                 this.canvas.height = height * dpr;
                 this.canvas.style.width = `${width}px`;
                 this.canvas.style.height = `${height}px`;
                 this.ctx.scale(dpr, dpr);
-                
                 this.width = width;
                 this.height = height;
+                this.centerX = width / 2;
+                this.centerY = height / 2;
             }
 
-            clear(opacity = 1) {
-                if (opacity < 1) {
+            clear(trail = false, opacity = 0.1) {
+                if (trail) {
                     this.ctx.fillStyle = `rgba(3, 3, 5, ${opacity})`;
                     this.ctx.fillRect(0, 0, this.width, this.height);
                 } else {
@@ -1377,10 +1401,10 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // STAR FIELD
+        // 3D WARP STAR FIELD
         // ═══════════════════════════════════════════════════════════════════
 
-        class StarField {
+        class WarpStarField {
             constructor(canvas) {
                 this.canvas = canvas;
                 this.stars = [];
@@ -1388,58 +1412,98 @@
             }
 
             init() {
-                const { COUNT, MIN_SIZE, MAX_SIZE } = CONFIG.STARS;
-                this.stars = Array.from({ length: COUNT }, () => ({
-                    x: Math.random(),
-                    y: Math.random(),
-                    z: Math.random() * 0.8 + 0.2,
-                    size: Utils.randomRange(MIN_SIZE, MAX_SIZE),
-                    twinkleOffset: Math.random() * Math.PI * 2,
-                    twinkleSpeed: Utils.randomRange(0.001, 0.003),
-                    color: this.getStarColor()
+                const { STAR_COUNT, SPAWN_DISTANCE, COLORS } = CONFIG.WARP;
+                
+                this.stars = Array.from({ length: STAR_COUNT }, () => ({
+                    x: (Math.random() - 0.5) * State.dimensions.width * 3,
+                    y: (Math.random() - 0.5) * State.dimensions.height * 3,
+                    z: Math.random() * SPAWN_DISTANCE,
+                    size: Utils.random(0.5, 2.5),
+                    color: COLORS[Utils.randomInt(0, COLORS.length)],
+                    brightness: Utils.random(0.5, 1)
                 }));
             }
 
-            getStarColor() {
-                const colors = [
-                    CONFIG.COLORS.WHITE,
-                    CONFIG.COLORS.GOLD_LIGHT,
-                    CONFIG.COLORS.CYAN,
-                    '#B8C4FF',
-                    '#FFE4C4'
-                ];
-                return colors[Math.floor(Math.random() * colors.length)];
+            update(dt) {
+                const { SPAWN_DISTANCE, PERSPECTIVE } = CONFIG.WARP;
+                const speed = State.warpSpeed;
+
+                this.stars.forEach(star => {
+                    star.z -= speed * dt * 60;
+
+                    // Reset star when it passes the camera
+                    if (star.z <= 1) {
+                        star.z = SPAWN_DISTANCE;
+                        star.x = (Math.random() - 0.5) * State.dimensions.width * 3;
+                        star.y = (Math.random() - 0.5) * State.dimensions.height * 3;
+                    }
+                });
             }
 
             render() {
-                const { ctx, width, height } = this.canvas;
-                const { smoothMouse } = State;
-                const { PARALLAX_STRENGTH } = CONFIG.STARS;
-                
-                this.canvas.clear(0.15);
+                const { ctx, width, height, centerX, centerY } = this.canvas;
+                const { PERSPECTIVE } = CONFIG.WARP;
+                const speed = State.warpSpeed;
 
-                const mouseOffsetX = (smoothMouse.x / width - 0.5) * 2;
-                const mouseOffsetY = (smoothMouse.y / height - 0.5) * 2;
+                // Dynamic trail based on speed
+                const trailOpacity = Utils.lerp(0.15, 0.02, Math.min(speed / 20, 1));
+                this.canvas.clear(true, trailOpacity);
 
-                this.stars.forEach(star => {
-                    const parallax = star.z * PARALLAX_STRENGTH;
-                    const x = star.x * width + mouseOffsetX * parallax * width;
-                    const y = star.y * height + mouseOffsetY * parallax * height;
-                    
-                    const twinkle = Math.sin(State.time * star.twinkleSpeed + star.twinkleOffset);
-                    const brightness = 0.5 + twinkle * 0.5;
-                    const size = star.size * (0.8 + twinkle * 0.2);
+                // Sort by z for proper layering (far to near)
+                const sortedStars = [...this.stars].sort((a, b) => b.z - a.z);
 
-                    ctx.globalAlpha = brightness * star.z;
-                    
-                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
-                    gradient.addColorStop(0, star.color);
-                    gradient.addColorStop(0.5, `${star.color}40`);
-                    gradient.addColorStop(1, 'transparent');
-                    
-                    ctx.fillStyle = gradient;
+                sortedStars.forEach(star => {
+                    // Perspective projection
+                    const scale = PERSPECTIVE / star.z;
+                    const x = star.x * scale + centerX;
+                    const y = star.y * scale + centerY;
+
+                    // Only render if on screen
+                    if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
+
+                    // Size and brightness based on distance
+                    const distanceFactor = 1 - star.z / CONFIG.WARP.SPAWN_DISTANCE;
+                    const size = star.size * scale * 0.5;
+                    const alpha = distanceFactor * star.brightness;
+
+                    // Draw star with glow
+                    ctx.globalAlpha = alpha;
+
+                    // Streak effect when moving fast
+                    if (speed > 5) {
+                        const streakLength = Math.min(speed * 2, 50) * scale * 0.1;
+                        const angle = Math.atan2(star.y, star.x);
+                        
+                        const gradient = ctx.createLinearGradient(
+                            x, y,
+                            x - Math.cos(angle) * streakLength,
+                            y - Math.sin(angle) * streakLength
+                        );
+                        gradient.addColorStop(0, star.color);
+                        gradient.addColorStop(1, 'transparent');
+
+                        ctx.strokeStyle = gradient;
+                        ctx.lineWidth = size;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(
+                            x - Math.cos(angle) * streakLength,
+                            y - Math.sin(angle) * streakLength
+                        );
+                        ctx.stroke();
+                    }
+
+                    // Star point with glow
+                    const glowSize = size * 3;
+                    const glow = ctx.createRadialGradient(x, y, 0, x, y, glowSize);
+                    glow.addColorStop(0, star.color);
+                    glow.addColorStop(0.3, `${star.color}80`);
+                    glow.addColorStop(1, 'transparent');
+
+                    ctx.fillStyle = glow;
                     ctx.beginPath();
-                    ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+                    ctx.arc(x, y, glowSize, 0, Math.PI * 2);
                     ctx.fill();
                 });
 
@@ -1448,41 +1512,80 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // NEBULA SYSTEM
+        // NEBULA CLOUDS
         // ═══════════════════════════════════════════════════════════════════
 
         class NebulaSystem {
             constructor(canvas) {
                 this.canvas = canvas;
-                this.nebulae = this.createNebulae();
+                this.clouds = [];
+                this.init();
             }
 
-            createNebulae() {
-                return [
-                    { x: 0.2, y: 0.3, size: 0.4, hue: 270, opacity: 0.08 },
-                    { x: 0.7, y: 0.6, size: 0.35, hue: 180, opacity: 0.06 },
-                    { x: 0.5, y: 0.8, size: 0.3, hue: 320, opacity: 0.05 },
-                    { x: 0.85, y: 0.2, size: 0.25, hue: 45, opacity: 0.04 }
-                ];
+            init() {
+                const { CLOUD_COUNT, MIN_SIZE, MAX_SIZE } = CONFIG.NEBULA;
+                const { width, height } = State.dimensions;
+
+                this.clouds = Array.from({ length: CLOUD_COUNT }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    z: Utils.random(500, 2000),
+                    size: Utils.random(MIN_SIZE, MAX_SIZE),
+                    hue: [270, 180, 320, 45, 200][Utils.randomInt(0, 5)],
+                    driftX: Utils.random(-0.5, 0.5),
+                    driftY: Utils.random(-0.3, 0.3),
+                    pulseOffset: Math.random() * Math.PI * 2,
+                    opacity: Utils.random(0.03, 0.08)
+                }));
+            }
+
+            update(dt) {
+                const { width, height } = State.dimensions;
+                const speed = State.warpSpeed;
+
+                this.clouds.forEach(cloud => {
+                    // Move with warp (slower than stars for parallax)
+                    cloud.z -= speed * dt * 20;
+
+                    // Drift
+                    cloud.x += cloud.driftX * dt * 60;
+                    cloud.y += cloud.driftY * dt * 60;
+
+                    // Reset when passed
+                    if (cloud.z <= 100) {
+                        cloud.z = 2000;
+                        cloud.x = Math.random() * width;
+                        cloud.y = Math.random() * height;
+                    }
+
+                    // Wrap around edges
+                    if (cloud.x < -cloud.size) cloud.x = width + cloud.size;
+                    if (cloud.x > width + cloud.size) cloud.x = -cloud.size;
+                    if (cloud.y < -cloud.size) cloud.y = height + cloud.size;
+                    if (cloud.y > height + cloud.size) cloud.y = -cloud.size;
+                });
             }
 
             render() {
-                const { ctx, width, height } = this.canvas;
-                const { smoothMouse } = State;
-                
+                const { ctx, width, height, centerX, centerY } = this.canvas;
                 this.canvas.clear();
 
-                const pulse = Math.sin(State.time * CONFIG.NEBULA.PULSE_SPEED) * 0.3 + 0.7;
+                const time = State.time;
 
-                this.nebulae.forEach(nebula => {
-                    const parallax = 0.02;
-                    const x = nebula.x * width + (smoothMouse.x / width - 0.5) * parallax * width;
-                    const y = nebula.y * height + (smoothMouse.y / height - 0.5) * parallax * height;
-                    const size = nebula.size * Math.min(width, height);
+                this.clouds.forEach(cloud => {
+                    // Perspective scale
+                    const scale = 800 / cloud.z;
+                    const x = (cloud.x - centerX) * scale + centerX;
+                    const y = (cloud.y - centerY) * scale + centerY;
+                    const size = cloud.size * scale;
+
+                    // Pulsing opacity
+                    const pulse = Math.sin(time * 0.001 + cloud.pulseOffset) * 0.3 + 0.7;
+                    const alpha = cloud.opacity * pulse * scale;
 
                     const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-                    gradient.addColorStop(0, `hsla(${nebula.hue}, 60%, 50%, ${nebula.opacity * pulse})`);
-                    gradient.addColorStop(0.5, `hsla(${nebula.hue}, 50%, 40%, ${nebula.opacity * pulse * 0.5})`);
+                    gradient.addColorStop(0, `hsla(${cloud.hue}, 60%, 50%, ${alpha})`);
+                    gradient.addColorStop(0.4, `hsla(${cloud.hue}, 50%, 40%, ${alpha * 0.5})`);
                     gradient.addColorStop(1, 'transparent');
 
                     ctx.fillStyle = gradient;
@@ -1492,183 +1595,154 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // CONSTELLATION NETWORK
+        // COSMIC DUST & SHOOTING STARS
         // ═══════════════════════════════════════════════════════════════════
 
-        class ConstellationNetwork {
+        class DustSystem {
             constructor(canvas) {
                 this.canvas = canvas;
-                this.nodes = [];
+                this.particles = [];
+                this.shootingStars = [];
+                this.lastShootingStar = 0;
                 this.init();
             }
 
             init() {
+                const { COUNT, MIN_SIZE, MAX_SIZE } = CONFIG.DUST;
                 const { width, height } = State.dimensions;
-                const { NODE_COUNT } = CONFIG.CONSTELLATIONS;
-                
-                this.nodes = Array.from({ length: NODE_COUNT }, () => ({
+
+                this.particles = Array.from({ length: COUNT }, () => ({
                     x: Math.random() * width,
                     y: Math.random() * height,
-                    vx: Utils.randomRange(-0.3, 0.3),
-                    vy: Utils.randomRange(-0.3, 0.3),
-                    size: Utils.randomRange(2, 4)
+                    z: Utils.random(0.3, 1),
+                    size: Utils.random(MIN_SIZE, MAX_SIZE),
+                    twinkle: Math.random() * Math.PI * 2,
+                    twinkleSpeed: Utils.random(0.002, 0.005)
                 }));
             }
 
-            update(dt) {
-                const { width, height } = this.canvas;
-                const { smoothMouse } = State;
+            spawnShootingStar() {
+                const { width, height } = State.dimensions;
+                const { SPEED, LENGTH } = CONFIG.SHOOTING_STARS;
 
-                this.nodes.forEach(node => {
-                    // Subtle mouse attraction
-                    const dx = smoothMouse.x - node.x;
-                    const dy = smoothMouse.y - node.y;
-                    const dist = Math.hypot(dx, dy);
-                    
-                    if (dist < 300 && dist > 0) {
-                        const force = (300 - dist) / 300 * 0.05;
-                        node.vx += (dx / dist) * force;
-                        node.vy += (dy / dist) * force;
-                    }
-
-                    // Apply velocity with damping
-                    node.x += node.vx;
-                    node.y += node.vy;
-                    node.vx *= 0.99;
-                    node.vy *= 0.99;
-
-                    // Wrap around edges
-                    if (node.x < 0) node.x = width;
-                    if (node.x > width) node.x = 0;
-                    if (node.y < 0) node.y = height;
-                    if (node.y > height) node.y = 0;
+                // Random starting position (usually from top/sides)
+                const startX = Math.random() * width;
+                const startY = -50;
+                const angle = Utils.random(Math.PI / 6, Math.PI / 3);
+                
+                this.shootingStars.push({
+                    x: startX,
+                    y: startY,
+                    vx: Math.cos(angle) * SPEED,
+                    vy: Math.sin(angle) * SPEED,
+                    length: LENGTH,
+                    life: 1,
+                    decay: Utils.random(0.005, 0.015),
+                    hue: [45, 180, 280][Utils.randomInt(0, 3)]
                 });
             }
 
+            update(dt) {
+                const { width, height } = State.dimensions;
+                const { smoothMouse } = State;
+                const { PARALLAX } = CONFIG.DUST;
+
+                // Update dust particles with parallax
+                this.particles.forEach(p => {
+                    p.twinkle += p.twinkleSpeed * dt * 1000;
+                    
+                    // Subtle drift based on scroll
+                    p.y += State.warpSpeed * 0.1 * p.z * dt * 60;
+                    if (p.y > height + 10) {
+                        p.y = -10;
+                        p.x = Math.random() * width;
+                    }
+                });
+
+                // Update shooting stars
+                this.shootingStars = this.shootingStars.filter(star => {
+                    star.x += star.vx * dt * 60;
+                    star.y += star.vy * dt * 60;
+                    star.life -= star.decay * dt * 60;
+                    return star.life > 0 && star.x < width + 100 && star.y < height + 100;
+                });
+
+                // Spawn new shooting stars
+                const now = performance.now();
+                const { INTERVAL_MIN, INTERVAL_MAX } = CONFIG.SHOOTING_STARS;
+                if (now - this.lastShootingStar > Utils.random(INTERVAL_MIN, INTERVAL_MAX)) {
+                    this.spawnShootingStar();
+                    this.lastShootingStar = now;
+                }
+            }
+
             render() {
-                const { ctx, width, height } = this.canvas;
-                const { MAX_DISTANCE, LINE_OPACITY } = CONFIG.CONSTELLATIONS;
-                
+                const { ctx, width, height, centerX, centerY } = this.canvas;
+                const { smoothMouse } = State;
+                const { PARALLAX } = CONFIG.DUST;
+
                 this.canvas.clear();
 
+                // Draw dust particles
+                this.particles.forEach(p => {
+                    const parallaxX = (smoothMouse.x - centerX) * PARALLAX * p.z;
+                    const parallaxY = (smoothMouse.y - centerY) * PARALLAX * p.z;
+                    
+                    const x = p.x + parallaxX;
+                    const y = p.y + parallaxY;
+                    
+                    const twinkle = Math.sin(p.twinkle) * 0.5 + 0.5;
+                    
+                    ctx.globalAlpha = twinkle * 0.6;
+                    ctx.fillStyle = '#F0EDE5';
+                    ctx.beginPath();
+                    ctx.arc(x, y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // Draw shooting stars
                 ctx.globalCompositeOperation = 'lighter';
+                
+                this.shootingStars.forEach(star => {
+                    const tailX = star.x - (star.vx / Math.abs(star.vx)) * star.length * star.life;
+                    const tailY = star.y - (star.vy / Math.abs(star.vy)) * star.length * star.life;
 
-                // Draw connections
-                for (let i = 0; i < this.nodes.length; i++) {
-                    for (let j = i + 1; j < this.nodes.length; j++) {
-                        const a = this.nodes[i];
-                        const b = this.nodes[j];
-                        const dist = Utils.distance(a.x, a.y, b.x, b.y);
-
-                        if (dist < MAX_DISTANCE) {
-                            const opacity = (1 - dist / MAX_DISTANCE) * LINE_OPACITY;
-                            ctx.strokeStyle = `rgba(201, 162, 39, ${opacity})`;
-                            ctx.lineWidth = 0.5;
-                            ctx.beginPath();
-                            ctx.moveTo(a.x, a.y);
-                            ctx.lineTo(b.x, b.y);
-                            ctx.stroke();
-                        }
-                    }
-                }
-
-                // Draw nodes
-                this.nodes.forEach(node => {
-                    const gradient = ctx.createRadialGradient(
-                        node.x, node.y, 0,
-                        node.x, node.y, node.size * 2
-                    );
-                    gradient.addColorStop(0, CONFIG.COLORS.GOLD_LIGHT);
+                    const gradient = ctx.createLinearGradient(star.x, star.y, tailX, tailY);
+                    gradient.addColorStop(0, `hsla(${star.hue}, 100%, 90%, ${star.life})`);
+                    gradient.addColorStop(0.3, `hsla(${star.hue}, 90%, 70%, ${star.life * 0.6})`);
                     gradient.addColorStop(1, 'transparent');
 
-                    ctx.fillStyle = gradient;
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
                     ctx.beginPath();
-                    ctx.arc(node.x, node.y, node.size * 2, 0, Math.PI * 2);
+                    ctx.moveTo(star.x, star.y);
+                    ctx.lineTo(tailX, tailY);
+                    ctx.stroke();
+
+                    // Bright head
+                    const headGlow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, 8);
+                    headGlow.addColorStop(0, `hsla(${star.hue}, 100%, 95%, ${star.life})`);
+                    headGlow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = headGlow;
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, 8, 0, Math.PI * 2);
                     ctx.fill();
                 });
 
                 ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = 1;
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // PARTICLE SYSTEM (Object Pooled)
+        // INTERACTION PARTICLES
         // ═══════════════════════════════════════════════════════════════════
-
-        class ParticlePool {
-            constructor(maxSize) {
-                this.pool = new Float32Array(maxSize * 8); // x, y, vx, vy, life, maxLife, size, hue
-                this.count = 0;
-                this.maxSize = maxSize;
-            }
-
-            spawn(x, y, vx, vy, life, size, hue) {
-                if (this.count >= this.maxSize) {
-                    this.count = Math.floor(this.maxSize * 0.7);
-                }
-                
-                const i = this.count * 8;
-                this.pool[i] = x;
-                this.pool[i + 1] = y;
-                this.pool[i + 2] = vx;
-                this.pool[i + 3] = vy;
-                this.pool[i + 4] = life;
-                this.pool[i + 5] = life;
-                this.pool[i + 6] = size;
-                this.pool[i + 7] = hue;
-                this.count++;
-            }
-
-            update(dt, gravity = 0) {
-                let write = 0;
-                
-                for (let i = 0; i < this.count; i++) {
-                    const idx = i * 8;
-                    
-                    this.pool[idx + 3] += gravity * dt;
-                    this.pool[idx] += this.pool[idx + 2] * dt;
-                    this.pool[idx + 1] += this.pool[idx + 3] * dt;
-                    this.pool[idx + 4] -= dt;
-                    
-                    if (this.pool[idx + 4] <= 0) continue;
-                    
-                    if (i !== write) {
-                        const writeIdx = write * 8;
-                        for (let j = 0; j < 8; j++) {
-                            this.pool[writeIdx + j] = this.pool[idx + j];
-                        }
-                    }
-                    write++;
-                }
-                
-                this.count = write;
-            }
-
-            forEach(callback) {
-                for (let i = 0; i < this.count; i++) {
-                    const idx = i * 8;
-                    callback({
-                        x: this.pool[idx],
-                        y: this.pool[idx + 1],
-                        vx: this.pool[idx + 2],
-                        vy: this.pool[idx + 3],
-                        life: this.pool[idx + 4],
-                        maxLife: this.pool[idx + 5],
-                        size: this.pool[idx + 6],
-                        hue: this.pool[idx + 7]
-                    });
-                }
-            }
-
-            clear() {
-                this.count = 0;
-            }
-        }
 
         class InteractionSystem {
             constructor(canvas) {
                 this.canvas = canvas;
-                this.particles = new ParticlePool(CONFIG.PARTICLES.MAX_COUNT);
+                this.particles = [];
                 this.prevMouse = { x: 0, y: 0 };
             }
 
@@ -1677,47 +1751,58 @@
                 const dy = y - this.prevMouse.y;
                 const dist = Math.hypot(dx, dy);
 
-                if (dist > 5 && Math.random() < CONFIG.PARTICLES.SPAWN_RATE) {
+                if (dist > 5 && Math.random() < CONFIG.INTERACTION.SPAWN_RATE) {
                     const angle = Math.atan2(dy, dx) + Math.PI;
                     const spread = Math.PI / 3;
-                    const particleAngle = angle + Utils.randomRange(-spread, spread);
-                    const speed = Utils.randomRange(30, 80);
-                    
-                    this.particles.spawn(
-                        x,
-                        y,
-                        Math.cos(particleAngle) * speed,
-                        Math.sin(particleAngle) * speed,
-                        Utils.randomRange(1, 2),
-                        Utils.randomRange(2, 5),
-                        Utils.randomRange(35, 55) // Gold hue range
-                    );
+                    const particleAngle = angle + Utils.random(-spread, spread);
+                    const speed = Utils.random(30, 80);
+
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(particleAngle) * speed,
+                        vy: Math.sin(particleAngle) * speed,
+                        life: Utils.random(1, 2),
+                        maxLife: Utils.random(1, 2),
+                        size: Utils.random(2, 5),
+                        hue: Utils.random(35, 55)
+                    });
+
+                    // Limit particles
+                    if (this.particles.length > CONFIG.INTERACTION.MAX_PARTICLES) {
+                        this.particles.shift();
+                    }
                 }
 
                 this.prevMouse.x = x;
                 this.prevMouse.y = y;
             }
 
-            createBurst(x, y, count = 20) {
+            createBurst(x, y, count = 25) {
                 for (let i = 0; i < count; i++) {
-                    const angle = (Math.PI * 2 * i) / count + Utils.randomRange(-0.3, 0.3);
-                    const speed = Utils.randomRange(80, 200);
-                    const hue = [45, 180, 280, 320][Math.floor(Math.random() * 4)];
-                    
-                    this.particles.spawn(
-                        x,
-                        y,
-                        Math.cos(angle) * speed,
-                        Math.sin(angle) * speed,
-                        Utils.randomRange(1, 2.5),
-                        Utils.randomRange(3, 8),
+                    const angle = (Math.PI * 2 * i) / count + Utils.random(-0.3, 0.3);
+                    const speed = Utils.random(80, 200);
+                    const hue = [45, 180, 280, 320][Utils.randomInt(0, 4)];
+
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: Utils.random(1, 2.5),
+                        maxLife: Utils.random(1, 2.5),
+                        size: Utils.random(3, 8),
                         hue
-                    );
+                    });
                 }
             }
 
             update(dt) {
-                this.particles.update(dt, CONFIG.PARTICLES.GRAVITY);
+                this.particles = this.particles.filter(p => {
+                    p.vy += CONFIG.INTERACTION.GRAVITY * dt;
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    return p.life > 0;
+                });
             }
 
             render() {
@@ -1729,7 +1814,7 @@
                 this.particles.forEach(p => {
                     const lifeRatio = p.life / p.maxLife;
                     const size = p.size * lifeRatio;
-                    
+
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 3);
                     gradient.addColorStop(0, `hsla(${p.hue}, 90%, 70%, ${lifeRatio})`);
                     gradient.addColorStop(0.5, `hsla(${p.hue}, 80%, 60%, ${lifeRatio * 0.5})`);
@@ -1752,17 +1837,17 @@
         class FloatingShapes {
             constructor() {
                 this.container = document.getElementById('floatingElements');
-                this.shapes = [];
             }
 
-            createShape(x, y) {
+            create(x, y) {
                 const shape = document.createElement('div');
                 shape.className = 'floating-shape';
-                
-                const type = CONFIG.FLOATING.SHAPES[Math.floor(Math.random() * CONFIG.FLOATING.SHAPES.length)];
-                const size = Utils.randomRange(15, 30);
-                const hue = [45, 180, 280][Math.floor(Math.random() * 3)];
-                
+
+                const types = ['diamond', 'star', 'circle'];
+                const type = types[Utils.randomInt(0, types.length)];
+                const size = Utils.random(15, 30);
+                const hue = [45, 180, 280][Utils.randomInt(0, 3)];
+
                 shape.style.cssText = `
                     left: ${x}px;
                     top: ${y}px;
@@ -1770,32 +1855,25 @@
                     height: ${size}px;
                     color: hsl(${hue}, 70%, 60%);
                 `;
-                
-                shape.innerHTML = this.getSVG(type);
-                
-                this.container.appendChild(shape);
-                
-                // Animate
-                requestAnimationFrame(() => {
-                    shape.style.transition = 'all 3s cubic-bezier(0.165, 0.84, 0.44, 1)';
-                    shape.style.opacity = '0.8';
-                    shape.style.transform = `translateY(-150px) rotate(${Utils.randomRange(-180, 180)}deg) scale(1.5)`;
-                    
-                    setTimeout(() => {
-                        shape.style.opacity = '0';
-                    }, 1500);
-                });
 
-                setTimeout(() => shape.remove(), 3000);
-            }
-
-            getSVG(type) {
                 const svgs = {
                     diamond: '<svg viewBox="0 0 24 24"><path d="M12 2L22 12L12 22L2 12L12 2Z"/></svg>',
                     star: '<svg viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>',
                     circle: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>'
                 };
-                return svgs[type];
+
+                shape.innerHTML = svgs[type];
+                this.container.appendChild(shape);
+
+                requestAnimationFrame(() => {
+                    shape.style.transition = 'all 3s cubic-bezier(0.165, 0.84, 0.44, 1)';
+                    shape.style.opacity = '0.8';
+                    shape.style.transform = `translateY(-150px) rotate(${Utils.random(-180, 180)}deg) scale(1.5)`;
+
+                    setTimeout(() => { shape.style.opacity = '0'; }, 1500);
+                });
+
+                setTimeout(() => shape.remove(), 3000);
             }
         }
 
@@ -1807,30 +1885,23 @@
             constructor() {
                 this.dot = document.getElementById('cursorDot');
                 this.ring = document.getElementById('cursorRing');
-                this.dotPos = { x: 0, y: 0 };
+                this.pos = { x: 0, y: 0 };
                 this.ringPos = { x: 0, y: 0 };
             }
 
             update() {
                 const { mouse } = State;
-                
-                this.dotPos.x = Utils.lerp(this.dotPos.x, mouse.x, 0.5);
-                this.dotPos.y = Utils.lerp(this.dotPos.y, mouse.y, 0.5);
-                
+                this.pos.x = Utils.lerp(this.pos.x, mouse.x, 0.5);
+                this.pos.y = Utils.lerp(this.pos.y, mouse.y, 0.5);
                 this.ringPos.x = Utils.lerp(this.ringPos.x, mouse.x, 0.15);
                 this.ringPos.y = Utils.lerp(this.ringPos.y, mouse.y, 0.15);
-                
-                this.dot.style.transform = `translate(${this.dotPos.x}px, ${this.dotPos.y}px) translate(-50%, -50%)`;
+
+                this.dot.style.transform = `translate(${this.pos.x}px, ${this.pos.y}px) translate(-50%, -50%)`;
                 this.ring.style.transform = `translate(${this.ringPos.x}px, ${this.ringPos.y}px) translate(-50%, -50%)`;
             }
 
-            expand() {
-                this.ring.classList.add('expanded');
-            }
-
-            contract() {
-                this.ring.classList.remove('expanded');
-            }
+            expand() { this.ring.classList.add('expanded'); }
+            contract() { this.ring.classList.remove('expanded'); }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1842,7 +1913,6 @@
                 this.audio = document.getElementById('bgMusic');
                 this.toggle = document.getElementById('playToggle');
                 this.player = document.getElementById('audioPlayer');
-                
                 this.toggle.addEventListener('click', () => this.togglePlay());
             }
 
@@ -1852,16 +1922,12 @@
                         await this.audio.play();
                         this.toggle.classList.add('playing');
                         this.player.classList.add('playing');
-                        State.isAudioPlaying = true;
                     } else {
                         this.audio.pause();
                         this.toggle.classList.remove('playing');
                         this.player.classList.remove('playing');
-                        State.isAudioPlaying = false;
                     }
-                } catch (e) {
-                    console.log('Audio playback failed:', e);
-                }
+                } catch (e) { console.log('Audio error:', e); }
             }
 
             async autoPlay() {
@@ -1870,10 +1936,7 @@
                     await this.audio.play();
                     this.toggle.classList.add('playing');
                     this.player.classList.add('playing');
-                    State.isAudioPlaying = true;
-                } catch (e) {
-                    console.log('Autoplay blocked');
-                }
+                } catch (e) { console.log('Autoplay blocked'); }
             }
         }
 
@@ -1886,9 +1949,7 @@
                 this.observer = new IntersectionObserver(
                     (entries) => {
                         entries.forEach(entry => {
-                            if (entry.isIntersecting) {
-                                entry.target.classList.add('visible');
-                            }
+                            if (entry.isIntersecting) entry.target.classList.add('visible');
                         });
                     },
                     { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
@@ -1896,15 +1957,13 @@
             }
 
             observe(selector) {
-                document.querySelectorAll(selector).forEach(el => {
-                    this.observer.observe(el);
-                });
+                document.querySelectorAll(selector).forEach(el => this.observer.observe(el));
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════
         // MAIN APPLICATION
-        // ═══════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════���════════════════
 
         class CosmicExperience {
             constructor() {
@@ -1916,15 +1975,14 @@
 
             init() {
                 // Initialize canvases
-                ['starsCanvas', 'nebulaCanvas', 'constellationCanvas', 'particleCanvas', 'interactionCanvas']
-                    .forEach(id => {
-                        this.canvases[id] = new CanvasManager(id);
-                    });
+                ['warpCanvas', 'nebulaCanvas', 'dustCanvas', 'interactionCanvas'].forEach(id => {
+                    this.canvases[id] = new CanvasManager(id);
+                });
 
                 // Initialize systems
-                this.systems.stars = new StarField(this.canvases.starsCanvas);
+                this.systems.warp = new WarpStarField(this.canvases.warpCanvas);
                 this.systems.nebula = new NebulaSystem(this.canvases.nebulaCanvas);
-                this.systems.constellations = new ConstellationNetwork(this.canvases.constellationCanvas);
+                this.systems.dust = new DustSystem(this.canvases.dustCanvas);
                 this.systems.interaction = new InteractionSystem(this.canvases.interactionCanvas);
                 this.systems.floating = new FloatingShapes();
                 this.systems.cursor = new CustomCursor();
@@ -1937,13 +1995,8 @@
             bindEvents() {
                 // Mouse movement
                 const handleMouseMove = Utils.throttle((e) => {
-                    const prevX = State.mouse.x;
-                    const prevY = State.mouse.y;
-                    
                     State.mouse.x = e.clientX;
                     State.mouse.y = e.clientY;
-                    State.mouse.vx = e.clientX - prevX;
-                    State.mouse.vy = e.clientY - prevY;
 
                     if (State.isActive) {
                         this.systems.interaction.createTrail(e.clientX, e.clientY);
@@ -1955,10 +2008,7 @@
                 // Touch support
                 document.addEventListener('touchmove', (e) => {
                     if (e.touches.length > 0) {
-                        handleMouseMove({
-                            clientX: e.touches[0].clientX,
-                            clientY: e.touches[0].clientY
-                        });
+                        handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
                     }
                 }, { passive: true });
 
@@ -1966,34 +2016,42 @@
                 const handleClick = (x, y) => {
                     if (State.isActive) {
                         this.systems.interaction.createBurst(x, y);
-                        this.systems.floating.createShape(x, y);
+                        this.systems.floating.create(x, y);
                     }
                 };
 
                 document.addEventListener('click', (e) => handleClick(e.clientX, e.clientY));
                 document.addEventListener('touchstart', (e) => {
-                    if (e.touches.length > 0) {
-                        handleClick(e.touches[0].clientX, e.touches[0].clientY);
-                    }
+                    if (e.touches.length > 0) handleClick(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+
+                // Scroll-based speed boost
+                let scrollTimeout;
+                window.addEventListener('scroll', () => {
+                    State.scrollY = window.scrollY;
+                    State.targetSpeed = CONFIG.WARP.BASE_SPEED + 3; // Slight boost on scroll
+
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        State.targetSpeed = CONFIG.WARP.BASE_SPEED;
+                    }, 300);
                 }, { passive: true });
 
                 // Cursor interactions
-                const interactiveElements = 'button, a, .photo-portal, .play-toggle';
-                document.querySelectorAll(interactiveElements).forEach(el => {
+                document.querySelectorAll('button, a, .photo-portal, .play-toggle').forEach(el => {
                     el.addEventListener('mouseenter', () => this.systems.cursor.expand());
                     el.addEventListener('mouseleave', () => this.systems.cursor.contract());
                 });
 
                 // Resize
-                const handleResize = Utils.debounce(() => {
+                window.addEventListener('resize', Utils.debounce(() => {
                     State.dimensions.width = window.innerWidth;
                     State.dimensions.height = window.innerHeight;
-                    
-                    Object.values(this.canvases).forEach(canvas => canvas.resize());
-                    this.systems.constellations.init();
-                }, 200);
-
-                window.addEventListener('resize', handleResize);
+                    Object.values(this.canvases).forEach(c => c.resize());
+                    this.systems.warp.init();
+                    this.systems.nebula.init();
+                    this.systems.dust.init();
+                }, 200));
 
                 // Entry button
                 document.getElementById('enterBtn').addEventListener('click', () => this.start());
@@ -2002,13 +2060,28 @@
             start() {
                 const gateway = document.getElementById('entryGateway');
                 const content = document.getElementById('contentWrapper');
-                
+                const warpLines = document.getElementById('warpLines');
+                const speedIndicator = document.getElementById('speedIndicator');
+
+                // Trigger warp speed
+                State.warpSpeed = CONFIG.WARP.WARP_SPEED;
+                State.isWarping = true;
+                warpLines.classList.add('active');
+                speedIndicator.classList.add('visible');
+
                 gateway.classList.add('dissolve');
-                
+
+                // Decelerate after warp duration
+                setTimeout(() => {
+                    State.isWarping = false;
+                    State.targetSpeed = CONFIG.WARP.BASE_SPEED;
+                    warpLines.classList.remove('active');
+                    speedIndicator.classList.remove('visible');
+                }, CONFIG.WARP.WARP_DURATION);
+
                 setTimeout(() => {
                     gateway.style.display = 'none';
                     content.classList.add('revealed');
-                    
                     State.isActive = true;
                     this.systems.audio.autoPlay();
                     this.systems.scrollObserver.observe('#letterBody p');
@@ -2017,25 +2090,36 @@
 
             animate = (timestamp) => {
                 if (!this.isRunning) return;
-                
+
                 const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
                 this.lastTime = timestamp;
-                
                 State.time = timestamp;
-                
-                // Smooth mouse interpolation
+
+                // Smooth speed transitions
+                if (!State.isWarping) {
+                    State.warpSpeed = Utils.lerp(State.warpSpeed, State.targetSpeed, 0.02);
+                } else {
+                    // During warp, maintain high speed with slight deceleration at end
+                    if (State.warpSpeed > CONFIG.WARP.WARP_SPEED * 0.3) {
+                        State.warpSpeed *= CONFIG.WARP.DECELERATION;
+                    }
+                }
+
+                // Smooth mouse
                 State.smoothMouse.x = Utils.lerp(State.smoothMouse.x, State.mouse.x, 0.08);
                 State.smoothMouse.y = Utils.lerp(State.smoothMouse.y, State.mouse.y, 0.08);
 
                 // Update systems
-                this.systems.constellations.update(dt);
+                this.systems.warp.update(dt);
+                this.systems.nebula.update(dt);
+                this.systems.dust.update(dt);
                 this.systems.interaction.update(dt);
                 this.systems.cursor.update();
 
                 // Render
-                this.systems.stars.render();
+                this.systems.warp.render();
                 this.systems.nebula.render();
-                this.systems.constellations.render();
+                this.systems.dust.render();
                 this.systems.interaction.render();
 
                 requestAnimationFrame(this.animate);
@@ -2055,10 +2139,7 @@
         const experience = new CosmicExperience();
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                experience.init();
-                experience.run();
-            });
+            document.addEventListener('DOMContentLoaded', () => { experience.init(); experience.run(); });
         } else {
             experience.init();
             experience.run();
